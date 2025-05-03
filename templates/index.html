@@ -1,83 +1,175 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
-    <meta charset="UTF-8">
-    <title>Monitorovanie DHT11</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <title>Monitorovanie DHT11</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-gauges/gauge.min.js"></script>
 </head>
 <body class="container py-4">
-    <h1 class="mb-4">Monitorovanie teploty a vlhkosti</h1>
+  <h1 class="mb-4">Monitorovanie teploty a vlhkosti</h1>
 
-    <div class="mb-3">
-        <a href="/open" class="btn btn-secondary">Open</a>
-        <a href="/start" class="btn btn-success">Start</a>
-        <a href="/stop" class="btn btn-warning">Stop</a>
-        <a href="/close" class="btn btn-danger">Close</a>
+  <div class="mb-4">
+    <a href="/open" class="btn btn-secondary">Open</a>
+    <a href="/start" class="btn btn-success">Start</a>
+    <a href="/stop" class="btn btn-warning">Stop</a>
+    <a href="/close" class="btn btn-danger">Close</a>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" id="myTab" role="tablist">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#list">Zoznam</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#chart">Graf</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#gauge">Ciferník</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#all">Všetko</button></li>
+  </ul>
+
+  <div class="tab-content pt-3">
+    <!-- Zoznam -->
+    <div class="tab-pane fade show active" id="list">
+      <table class="table table-bordered">
+        <thead><tr><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
+        <tbody id="list-body">
+          {% for t, h in data %}
+          <tr><td>{{ t }}</td><td>{{ h }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
-    <h3>Posledné údaje</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Teplota (°C)</th>
-                <th>Vlhkosť (%)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for t, h in data %}
-            <tr>
-                <td>{{ t }}</td>
-                <td>{{ h }}</td>
-            </tr>
-            {% endfor %}
+    <!-- Graf -->
+    <div class="tab-pane fade" id="chart">
+      <canvas id="sensorChart" height="100"></canvas>
+    </div>
+
+    <!-- Ciferník -->
+    <div class="tab-pane fade" id="gauge">
+      <div class="row text-center">
+        <div class="col-md-6">
+          <p><strong>Teplota:</strong> <span id="temp-text">{{ data[0][0] }}</span> °C</p>
+          <canvas id="tempGauge" width="250" height="250"></canvas>
+        </div>
+        <div class="col-md-6">
+          <p><strong>Vlhkosť:</strong> <span id="hum-text">{{ data[0][1] }}</span> %</p>
+          <canvas id="humGauge" width="250" height="250"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Všetko -->
+    <div class="tab-pane fade" id="all">
+      <h5>Tabuľka</h5>
+      <table class="table table-bordered">
+        <thead><tr><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
+        <tbody id="list-body-all">
+          {% for t, h in data %}
+          <tr><td>{{ t }}</td><td>{{ h }}</td></tr>
+          {% endfor %}
         </tbody>
-    </table>
+      </table>
 
-    <h3 class="mt-5">Graf</h3>
-    <canvas id="sensorChart" height="100"></canvas>
+      <h5 class="mt-4">Graf</h5>
+      <canvas id="sensorChartAll" height="100"></canvas>
 
-    <script>
-        const labels = [...Array({{ data|length }}).keys()].map(i => "T-" + ({{ data|length }} - i));
-        const tempData = {{ data|map(attribute=0)|list }};
-        const humData = {{ data|map(attribute=1)|list }};
+      <div class="row text-center mt-4">
+        <div class="col-md-6">
+          <p><strong>Teplota:</strong> <span id="temp-text-all">{{ data[0][0] }}</span> °C</p>
+          <canvas id="tempGaugeAll" width="250" height="250"></canvas>
+        </div>
+        <div class="col-md-6">
+          <p><strong>Vlhkosť:</strong> <span id="hum-text-all">{{ data[0][1] }}</span> %</p>
+          <canvas id="humGaugeAll" width="250" height="250"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        const ctx = document.getElementById('sensorChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels.reverse(),
-                datasets: [
-                    {
-                        label: 'Teplota (°C)',
-                        data: tempData.reverse(),
-                        borderColor: 'rgba(255, 99, 132, 1)',
-                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Vlhkosť (%)',
-                        data: humData.reverse(),
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        position: 'top'
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
+  <!-- JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let chart, chartAll, tempGauge, humGauge, tempGaugeAll, humGaugeAll;
+
+    function createChart(id) {
+      const ctx = document.getElementById(id).getContext("2d");
+      return new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            { label: "Teplota (°C)", data: [], borderColor: "red", tension: 0.3 },
+            { label: "Vlhkosť (%)", data: [], borderColor: "blue", tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    function createGauge(canvasId, max, units) {
+      return new RadialGauge({
+        renderTo: canvasId,
+        width: 250,
+        height: 250,
+        units: units,
+        minValue: 0,
+        maxValue: max,
+        majorTicks: max === 100 ? ["0","20","40","60","80","100"] : ["0","10","20","30","40","50"],
+        animation: true,
+        value: 0
+      }).draw();
+    }
+
+    function updateData() {
+      fetch("/data")
+        .then(res => res.json())
+        .then(json => {
+          const data = json.data.reverse();
+          const temps = data.map(d => d[0]);
+          const hums = data.map(d => d[1]);
+
+          // Tabuľky
+          document.getElementById("list-body").innerHTML =
+          document.getElementById("list-body-all").innerHTML =
+            data.map(d => `<tr><td>${d[0]}</td><td>${d[1]}</td></tr>`).join("");
+
+          // Grafy
+          chart.data.labels = chartAll.data.labels = temps.map((_, i) => `T-${i}`);
+          chart.data.datasets[0].data = chartAll.data.datasets[0].data = temps;
+          chart.data.datasets[1].data = chartAll.data.datasets[1].data = hums;
+          chart.update();
+          chartAll.update();
+
+          // Ciferníky
+          const latestTemp = temps[temps.length - 1];
+          const latestHum = hums[hums.length - 1];
+
+          document.getElementById("temp-text").innerText = latestTemp;
+          document.getElementById("hum-text").innerText = latestHum;
+          document.getElementById("temp-text-all").innerText = latestTemp;
+          document.getElementById("hum-text-all").innerText = latestHum;
+
+          tempGauge.value = latestTemp;
+          humGauge.value = latestHum;
+          tempGaugeAll.value = latestTemp;
+          humGaugeAll.value = latestHum;
         });
-    </script>
+    }
+
+    window.onload = () => {
+      chart = createChart("sensorChart");
+      chartAll = createChart("sensorChartAll");
+      tempGauge = createGauge("tempGauge", 50, "°C");
+      humGauge = createGauge("humGauge", 100, "%");
+      tempGaugeAll = createGauge("tempGaugeAll", 50, "°C");
+      humGaugeAll = createGauge("humGaugeAll", 100, "%");
+
+      updateData();
+      setInterval(updateData, 2000);
+    };
+  </script>
 </body>
 </html>
