@@ -1,32 +1,31 @@
-from flask import Flask, render_template, redirect, url_for
-from db_handler import get_latest_data
+from flask import Flask, render_template, jsonify
+import mysql.connector
 
 app = Flask(__name__)
 
+def fetch_data():
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="lenka",
+        password="mojesilneheslo",
+        database="poit_d1"
+    )
+    cursor = conn.cursor()
+    cursor.execute("SELECT teplota, vlhkost, cas FROM monitorovanie ORDER BY id DESC LIMIT 20")
+    result = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return result[::-1]  # otočíme poradie z najstarších po najnovšie
+
 @app.route("/")
 def index():
-    data = get_latest_data()
+    data = fetch_data()
     return render_template("index.html", data=data)
 
-@app.route("/open")
-def open_system():
-    print("Systém otvorený.")
-    return redirect(url_for("index"))
-
-@app.route("/start")
-def start_monitoring():
-    print("Monitoring spustený.")
-    return redirect(url_for("index"))
-
-@app.route("/stop")
-def stop_monitoring():
-    print("Monitoring zastavený.")
-    return redirect(url_for("index"))
-
-@app.route("/close")
-def close_system():
-    print("Systém ukončený.")
-    return redirect(url_for("index"))
+@app.route("/data")
+def data():
+    return jsonify(data=fetch_data())
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Spúšťa Flask server na všetkých adresách (vrátane 192.168.x.x)
+    app.run(debug=True, host="0.0.0.0", port=5000)

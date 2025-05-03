@@ -29,10 +29,14 @@
     <!-- Zoznam -->
     <div class="tab-pane fade show active" id="list">
       <table class="table table-bordered">
-        <thead><tr><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
+        <thead><tr><th>Čas</th><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
         <tbody id="list-body">
-          {% for t, h in data %}
-          <tr><td>{{ t }}</td><td>{{ h }}</td></tr>
+          {% for t, h, c in data %}
+          <tr>
+            <td>{{ c }}</td>
+            <td>{{ t }}</td>
+            <td>{{ h }}</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
@@ -61,10 +65,14 @@
     <div class="tab-pane fade" id="all">
       <h5>Tabuľka</h5>
       <table class="table table-bordered">
-        <thead><tr><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
+        <thead><tr><th>Čas</th><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
         <tbody id="list-body-all">
-          {% for t, h in data %}
-          <tr><td>{{ t }}</td><td>{{ h }}</td></tr>
+          {% for t, h, c in data %}
+          <tr>
+            <td>{{ c }}</td>
+            <td>{{ t }}</td>
+            <td>{{ h }}</td>
+          </tr>
           {% endfor %}
         </tbody>
       </table>
@@ -90,7 +98,7 @@
 
   <script>
     let chart, chartAll, tempGauge, humGauge, tempGaugeAll, humGaugeAll;
-
+  
     function createChart(id) {
       const ctx = document.getElementById(id).getContext("2d");
       return new Chart(ctx, {
@@ -104,11 +112,19 @@
         },
         options: {
           responsive: true,
-          scales: { y: { beginAtZero: true } }
+          scales: {
+            y: { beginAtZero: true },
+            x: {
+              ticks: {
+                autoSkip: true,
+                maxTicksLimit: 10
+              }
+            }
+          }
         }
       });
     }
-
+  
     function createGauge(canvasId, max, units) {
       return new RadialGauge({
         renderTo: canvasId,
@@ -122,43 +138,44 @@
         value: 0
       }).draw();
     }
-
+  
     function updateData() {
       fetch("/data")
         .then(res => res.json())
         .then(json => {
-          const data = json.data.reverse();
+          const data = json.data.reverse(); // zoradené od najstaršieho
           const temps = data.map(d => d[0]);
           const hums = data.map(d => d[1]);
-
-          // Tabuľky
-          document.getElementById("list-body").innerHTML =
-          document.getElementById("list-body-all").innerHTML =
-            data.map(d => `<tr><td>${d[0]}</td><td>${d[1]}</td></tr>`).join("");
-
-          // Grafy
-          chart.data.labels = chartAll.data.labels = temps.map((_, i) => `T-${i}`);
+          const times = data.map(d => d[2]);
+  
+          // 🟢 Tabuľky
+          const rowsHTML = data.map(d =>
+            `<tr><td>${d[2]}</td><td>${d[0]}</td><td>${d[1]}</td></tr>`).join("");
+          document.getElementById("list-body").innerHTML = rowsHTML;
+          document.getElementById("list-body-all").innerHTML = rowsHTML;
+  
+          // 🟢 Grafy
+          chart.data.labels = chartAll.data.labels = times;
           chart.data.datasets[0].data = chartAll.data.datasets[0].data = temps;
           chart.data.datasets[1].data = chartAll.data.datasets[1].data = hums;
           chart.update();
           chartAll.update();
-
-          // Ciferníky
+  
+          // 🟢 Ciferníky
           const latestTemp = temps[temps.length - 1];
           const latestHum = hums[hums.length - 1];
-
           document.getElementById("temp-text").innerText = latestTemp;
           document.getElementById("hum-text").innerText = latestHum;
           document.getElementById("temp-text-all").innerText = latestTemp;
           document.getElementById("hum-text-all").innerText = latestHum;
-
+  
           tempGauge.value = latestTemp;
           humGauge.value = latestHum;
           tempGaugeAll.value = latestTemp;
           humGaugeAll.value = latestHum;
         });
     }
-
+  
     window.onload = () => {
       chart = createChart("sensorChart");
       chartAll = createChart("sensorChartAll");
@@ -166,10 +183,11 @@
       humGauge = createGauge("humGauge", 100, "%");
       tempGaugeAll = createGauge("tempGaugeAll", 50, "°C");
       humGaugeAll = createGauge("humGaugeAll", 100, "%");
-
+  
       updateData();
       setInterval(updateData, 2000);
     };
   </script>
+  
 </body>
 </html>
