@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitorovanie DHT11</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container py-4">
+    <h1 class="mb-4">Monitorovanie teploty a vlhkosti</h1>
+
+    <div class="mb-3">
+        <a href="/open" class="btn btn-secondary">Open</a>
+        <a href="/start" class="btn btn-success">Start</a>
+        <a href="/stop" class="btn btn-warning">Stop</a>
+        <a href="/close" class="btn btn-danger">Close</a>
+    </div>
+
+    <h3>Posledné údaje</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Teplota (°C)</th>
+                <th>Vlhkosť (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t, h in data %}
+            <tr>
+                <td>{{ t }}</td>
+                <td>{{ h }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
