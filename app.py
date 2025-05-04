@@ -105,19 +105,74 @@ def open_system():
 def start_monitoring():
     global monitoring_active
     monitoring_active = True
+
+    # Zápis do DB
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="lenka",
+            password="mojesilneheslo",
+            database="poit_d1"
+        )
+        cursor = conn.cursor()
+        cursor.execute("UPDATE stav_systemu SET monitoring = TRUE WHERE id = 1")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("▶️ Monitoring bol spustený (stav uložený do DB)")
+    except Exception as e:
+        print("❌ Chyba pri zápise do stav_systemu:", e)
+
     emit("status_update", {"status": "▶️ Monitoring spustený"}, broadcast=True)
+
 
 @socketio.on("stop_monitoring")
 def stop_monitoring():
     global monitoring_active
     monitoring_active = False
+
+    # Zápis do DB
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="lenka",
+            password="mojesilneheslo",
+            database="poit_d1"
+        )
+        cursor = conn.cursor()
+        cursor.execute("UPDATE stav_systemu SET monitoring = FALSE WHERE id = 1")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("⏹️ Monitoring bol zastavený (stav uložený do DB)")
+    except Exception as e:
+        print("❌ Chyba pri zápise do stav_systemu:", e)
+
     emit("status_update", {"status": "⏸️ Monitoring pozastavený"}, broadcast=True)
+
+
 
 @socketio.on("close_system")
 def close_system():
     global monitoring_active
     monitoring_active = False
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="lenka",
+            password="mojesilneheslo",
+            database="poit_d1"
+        )
+        cursor = conn.cursor()
+        cursor.execute("UPDATE stav_systemu SET monitoring = FALSE WHERE id = 1")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        print("🛑 Systém zatvorený – monitoring deaktivovaný v DB")
+    except Exception as e:
+        print("❌ Chyba pri zatváraní systému:", e)
     emit("status_update", {"status": "🔴 Systém zatvorený"}, broadcast=True)
+
 
 @socketio.on("set_limits")
 def set_limits(data):
