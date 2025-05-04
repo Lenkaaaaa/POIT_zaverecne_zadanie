@@ -7,9 +7,16 @@ import mysql.connector
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tajnykluc'
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode="eventlet")  
 
-monitoring_active = False  # Stav monitorovania
+monitoring_active = False
+
+limits = {
+    "min_temp": 18,
+    "max_temp": 30,
+    "min_hum": 30,
+    "max_hum": 60
+}
 
 
 def get_latest_data(limit=1):
@@ -30,7 +37,6 @@ def get_latest_data(limit=1):
         print("❌ Chyba DB:", e)
         return []
 
-
 def background_thread():
     while True:
         if monitoring_active:
@@ -42,24 +48,27 @@ def background_thread():
                     "vlhkost": vlhkost,
                     "cas": str(cas)
                 })
-        socketio.sleep(1)
+                # Kontrola limitov
+                if teplota < limits["min_temp"] or teplota > limits["max_temp"] or \
+                vlhkost < limits["min_hum"] or vlhkost > limits["max_hum"]:
+                    socketio.emit("limit_status", {"message": "⚠️ Mimo rozsahu"})
+                else:
+                    socketio.emit("limit_status", {"message": "✅ V norme"})
 
+        socketio.sleep(1)
 
 @app.route("/")
 def index():
     return render_template("index.html")
-
 
 @socketio.on("connect")
 def on_connect():
     print("✅ Klient pripojený")
     socketio.start_background_task(background_thread)
 
-
 @socketio.on("open_system")
 def open_system():
     emit("status_update", {"status": "🟢 Systém pripravený"}, broadcast=True)
-
 
 @socketio.on("start_monitoring")
 def start_monitoring():
@@ -67,19 +76,28 @@ def start_monitoring():
     monitoring_active = True
     emit("status_update", {"status": "▶️ Monitoring spustený"}, broadcast=True)
 
-
 @socketio.on("stop_monitoring")
 def stop_monitoring():
     global monitoring_active
     monitoring_active = False
     emit("status_update", {"status": "⏸️ Monitoring pozastavený"}, broadcast=True)
 
-
 @socketio.on("close_system")
 def close_system():
     global monitoring_active
     monitoring_active = False
     emit("status_update", {"status": "🔴 Systém zatvorený"}, broadcast=True)
+
+@socketio.on("set_limits")
+def set_limits(data):
+    try:
+        limits["min_temp"] = float(data.get("min_temp", 18))
+        limits["max_temp"] = float(data.get("max_temp", 30))
+        limits["min_hum"] = float(data.get("min_hum", 30))
+        limits["max_hum"] = float(data.get("max_hum", 60))
+        print("✅ Limity nastavené:", limits)
+    except Exception as e:
+        print("❌ Chyba pri nastavovaní limitov:", e)
 
 
 if __name__ == "__main__":

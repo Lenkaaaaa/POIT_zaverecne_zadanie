@@ -13,12 +13,38 @@
 
   <!-- Ovládacie tlačidlá -->
   <div class="mb-4">
-    <button class="btn btn-secondary" onclick="sendCommand('open_system')">Open</button>
-    <button class="btn btn-success" onclick="sendCommand('start_monitoring')">Start</button>
-    <button class="btn btn-warning" onclick="sendCommand('stop_monitoring')">Stop</button>
-    <button class="btn btn-danger" onclick="sendCommand('close_system')">Close</button>
+    <div class="btn-group me-3" role="group">
+      <button class="btn btn-secondary" onclick="sendCommand('open_system')">Open</button>
+      <button class="btn btn-success" onclick="sendCommand('start_monitoring')">Start</button>
+      <button class="btn btn-warning" onclick="sendCommand('stop_monitoring')">Stop</button>
+      <button class="btn btn-danger" onclick="sendCommand('close_system')">Close</button>
+    </div>
     <p class="mt-2"><strong>Status:</strong> <span id="status-text">—</span></p>
   </div>
+
+  <form class="row g-2 mb-4" onsubmit="setLimits(event)">
+    <div class="col">
+      <label>Min. teplota</label>
+      <input type="number" id="minTemp" class="form-control" value="18" required>
+    </div>
+    <div class="col">
+      <label>Max. teplota</label>
+      <input type="number" id="maxTemp" class="form-control" value="30" required>
+    </div>
+    <div class="col">
+      <label>Min. vlhkosť</label>
+      <input type="number" id="minHum" class="form-control" value="30" required>
+    </div>
+    <div class="col">
+      <label>Max. vlhkosť</label>
+      <input type="number" id="maxHum" class="form-control" value="60" required>
+    </div>
+    <div class="col align-self-end">
+      <button type="submit" class="btn btn-primary w-100">Nastaviť limity</button>
+    </div>
+  </form>
+  <p><strong>Stav rozsahov:</strong> <span id="limit-status">—</span></p>
+  
 
   <!-- Ciferníky -->
   <div class="row text-center mb-4">
@@ -44,30 +70,28 @@
   <canvas id="sensorChart" height="100"></canvas>
 
   <script>
+    let limits = {
+      min_temp: 18,
+      max_temp: 30,
+      min_hum: 30,
+      max_hum: 60
+    };
+
     const socket = io();
     const table = document.getElementById("data-table");
     const statusText = document.getElementById("status-text");
 
     function sendCommand(cmd) {
       socket.emit(cmd);
-
-      // Ak bol stlačený "Close", resetujeme vizualizácie
-      if (cmd === "close_system") {
-        resetDisplay();
-      }
+      if (cmd === "close_system") resetDisplay();
     }
 
     function resetDisplay() {
-      // Reset textov a ciferníkov
       document.getElementById("temp-text").innerText = "--";
       document.getElementById("hum-text").innerText = "--";
       tempGauge.value = 0;
       humGauge.value = 0;
-
-      // Vymazanie tabuľky
       table.innerHTML = "";
-
-      // Reset grafu
       chart.data.labels = [];
       chart.data.datasets.forEach(ds => ds.data = []);
       chart.update();
@@ -82,11 +106,9 @@
           { label: "Vlhkosť (%)", data: [], borderColor: "blue", fill: false }
         ]
       },
-      options: {
-        responsive: true,
-        scales: { y: { beginAtZero: true } }
-      }
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
     });
+
 
     const tempGauge = new RadialGauge({
       renderTo: "tempGauge",
@@ -95,8 +117,13 @@
       units: "°C",
       value: 0,
       majorTicks: ["0","10","20","30","40","50"],
-      animation: true
+      animation: true,
+      valueInt: 2,
+      valueDec: 1,
+      valueTextShadow: false,
+      colorValueText: "#000"
     }).draw();
+
 
     const humGauge = new RadialGauge({
       renderTo: "humGauge",
@@ -105,23 +132,41 @@
       units: "%",
       value: 0,
       majorTicks: ["0","20","40","60","80","100"],
-      animation: true
+      animation: true,
+      valueInt: 2,
+      valueDec: 1,
+      valueTextShadow: false,
+      colorValueText: "#000"
     }).draw();
+
 
     socket.on("new_data", (data) => {
       const time = new Date(data.cas).toLocaleTimeString('sk-SK');
       const temp = data.teplota;
       const hum = data.vlhkost;
-
       document.getElementById("temp-text").innerText = temp;
       document.getElementById("hum-text").innerText = hum;
       tempGauge.value = temp;
       humGauge.value = hum;
 
-      const row = `<tr><td>${time}</td><td>${temp}</td><td>${hum}</td></tr>`;
+      tempGauge.update({ colorValueText: (temp < limits.min_temp || temp > limits.max_temp) ? "red" : "black" });
+      humGauge.update({ colorValueText: (hum < limits.min_hum || hum > limits.max_hum) ? "red" : "black" });
+
+      let tempClass = "";
+      let humClass = "";
+
+      // Kontrola rozsahov (musí byť rovnaké ako na serveri)
+      if (temp < limits.min_temp || temp > limits.max_temp) tempClass = "table-danger";
+      if (hum < limits.min_hum || hum > limits.max_hum) humClass = "table-danger";
+
+      const row = `<tr>
+        <td>${time}</td>
+        <td class="${tempClass}">${temp}</td>
+        <td class="${humClass}">${hum}</td>
+      </tr>`;
+
       table.insertAdjacentHTML("afterbegin", row);
       if (table.rows.length > 10) table.deleteRow(-1);
-
       chart.data.labels.push(time);
       chart.data.datasets[0].data.push(temp);
       chart.data.datasets[1].data.push(hum);
@@ -136,6 +181,22 @@
     socket.on("status_update", (data) => {
       statusText.textContent = data.status;
     });
+
+    function setLimits(e) {
+      e.preventDefault();
+      limits.min_temp = parseFloat(document.getElementById("minTemp").value);
+      limits.max_temp = parseFloat(document.getElementById("maxTemp").value);
+      limits.min_hum = parseFloat(document.getElementById("minHum").value);
+      limits.max_hum = parseFloat(document.getElementById("maxHum").value);
+
+      socket.emit("set_limits", { ...limits });
+    }
+
+
+    socket.on("limit_status", data => {
+      document.getElementById("limit-status").innerText = data.message;
+    });
+
   </script>
 </body>
 </html>
