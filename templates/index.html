@@ -2,196 +2,61 @@
 <html lang="sk">
 <head>
   <meta charset="UTF-8">
-  <title>Monitorovanie DHT11</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <title>DHT11 Monitorovanie</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-gauges/gauge.min.js"></script>
 </head>
 <body class="container py-4">
-  <h1 class="mb-4">Monitorovanie teploty a vlhkosti</h1>
+  <h1 class="mb-4">Monitorovanie senzora DHT11</h1>
 
-  <div class="mb-4">
-    <a href="/open" class="btn btn-secondary">Open</a>
-    <a href="/start" class="btn btn-success">Start</a>
-    <a href="/stop" class="btn btn-warning">Stop</a>
-    <a href="/close" class="btn btn-danger">Close</a>
+  <div class="mb-3">
+    <button id="open-btn" class="btn btn-secondary">Open</button>
+    <button id="start-btn" class="btn btn-success">Start</button>
+    <button id="stop-btn" class="btn btn-warning">Stop</button>
+    <button id="close-btn" class="btn btn-danger">Close</button>
   </div>
 
-  <!-- Tabs -->
-  <ul class="nav nav-tabs" id="myTab" role="tablist">
-    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#list">Zoznam</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#chart">Graf</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#gauge">Ciferník</button></li>
-    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#all">Všetko</button></li>
-  </ul>
+  <div id="status" class="alert alert-info">Systém zatiaľ nebol spustený.</div>
 
-  <div class="tab-content pt-3">
-    <!-- Zoznam -->
-    <div class="tab-pane fade show active" id="list">
-      <table class="table table-bordered">
-        <thead><tr><th>Čas</th><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
-        <tbody id="list-body">
-          {% for t, h, c in data %}
-          <tr>
-            <td>{{ c }}</td>
-            <td>{{ t }}</td>
-            <td>{{ h }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+  <div id="monitoring-section" style="display: none;">
+    <ul class="nav nav-tabs">
+      <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-table">Tabuľka</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-chart">Graf</button></li>
+      <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-gauge">Ciferník</button></li>
+    </ul>
 
-    <!-- Graf -->
-    <div class="tab-pane fade" id="chart">
-      <canvas id="sensorChart" height="100"></canvas>
-    </div>
-
-    <!-- Ciferník -->
-    <div class="tab-pane fade" id="gauge">
-      <div class="row text-center">
-        <div class="col-md-6">
-          <p><strong>Teplota:</strong> <span id="temp-text">{{ data[0][0] }}</span> °C</p>
-          <canvas id="tempGauge" width="250" height="250"></canvas>
-        </div>
-        <div class="col-md-6">
-          <p><strong>Vlhkosť:</strong> <span id="hum-text">{{ data[0][1] }}</span> %</p>
-          <canvas id="humGauge" width="250" height="250"></canvas>
-        </div>
+    <div class="tab-content pt-3">
+      <!-- Tabuľka -->
+      <div class="tab-pane fade show active" id="tab-table">
+        <table class="table table-bordered">
+          <thead><tr><th>Čas</th><th>Teplota</th><th>Vlhkosť</th></tr></thead>
+          <tbody id="table-body"></tbody>
+        </table>
       </div>
-    </div>
 
-    <!-- Všetko -->
-    <div class="tab-pane fade" id="all">
-      <h5>Tabuľka</h5>
-      <table class="table table-bordered">
-        <thead><tr><th>Čas</th><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
-        <tbody id="list-body-all">
-          {% for t, h, c in data %}
-          <tr>
-            <td>{{ c }}</td>
-            <td>{{ t }}</td>
-            <td>{{ h }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <!-- Graf -->
+      <div class="tab-pane fade" id="tab-chart">
+        <canvas id="sensorChart" height="100"></canvas>
+      </div>
 
-      <h5 class="mt-4">Graf</h5>
-      <canvas id="sensorChartAll" height="100"></canvas>
-
-      <div class="row text-center mt-4">
-        <div class="col-md-6">
-          <p><strong>Teplota:</strong> <span id="temp-text-all">{{ data[0][0] }}</span> °C</p>
-          <canvas id="tempGaugeAll" width="250" height="250"></canvas>
-        </div>
-        <div class="col-md-6">
-          <p><strong>Vlhkosť:</strong> <span id="hum-text-all">{{ data[0][1] }}</span> %</p>
-          <canvas id="humGaugeAll" width="250" height="250"></canvas>
+      <!-- Ciferník -->
+      <div class="tab-pane fade" id="tab-gauge">
+        <div class="row text-center">
+          <div class="col-md-6">
+            <p><strong>Teplota:</strong> <span id="temp-text">--</span> °C</p>
+            <canvas id="tempGauge" width="250" height="250"></canvas>
+          </div>
+          <div class="col-md-6">
+            <p><strong>Vlhkosť:</strong> <span id="hum-text">--</span> %</p>
+            <canvas id="humGauge" width="250" height="250"></canvas>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- JS -->
+  <script src="/static/main.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-  <script>
-    let chart, chartAll, tempGauge, humGauge, tempGaugeAll, humGaugeAll;
-  
-    function createChart(id) {
-      const ctx = document.getElementById(id).getContext("2d");
-      return new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: [],
-          datasets: [
-            { label: "Teplota (°C)", data: [], borderColor: "red", tension: 0.3 },
-            { label: "Vlhkosť (%)", data: [], borderColor: "blue", tension: 0.3 }
-          ]
-        },
-        options: {
-          responsive: true,
-          scales: {
-            y: { beginAtZero: true },
-            x: {
-              ticks: {
-                autoSkip: true,
-                maxTicksLimit: 10
-              }
-            }
-          }
-        }
-      });
-    }
-  
-    function createGauge(canvasId, max, units) {
-      return new RadialGauge({
-        renderTo: canvasId,
-        width: 250,
-        height: 250,
-        units: units,
-        minValue: 0,
-        maxValue: max,
-        majorTicks: max === 100 ? ["0","20","40","60","80","100"] : ["0","10","20","30","40","50"],
-        animation: true,
-        value: 0
-      }).draw();
-    }
-  
-    function updateData() {
-      fetch("/data")
-        .then(res => res.json())
-        .then(json => {
-          const data = json.data; // zoradené od najstaršieho
-          const temps = data.map(d => d[0]);
-          const hums = data.map(d => d[1]);
-          const times = data.map(d => {
-            const t = new Date(d[2]);
-            return t.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        });
-
-  
-          // Tabuľky
-          const rowsHTML = data.map(d => `<tr><td>${d[2]}</td><td>${d[0]}</td><td>${d[1]}</td></tr>`).join("");
-          document.getElementById("list-body").innerHTML = rowsHTML;
-          document.getElementById("list-body-all").innerHTML = rowsHTML;
-  
-          // Grafy
-          const timestamps = data.map(d => new Date(d[2]).toLocaleTimeString());
-          chart.data.labels = chartAll.data.labels = timestamps;
-          chart.data.datasets[0].data = chartAll.data.datasets[0].data = temps;
-          chart.data.datasets[1].data = chartAll.data.datasets[1].data = hums;
-          chart.update();
-          chartAll.update();
-  
-          // Ciferníky
-          const latestTemp = temps[temps.length - 1];
-          const latestHum = hums[hums.length - 1];
-          document.getElementById("temp-text").innerText = latestTemp;
-          document.getElementById("hum-text").innerText = latestHum;
-          document.getElementById("temp-text-all").innerText = latestTemp;
-          document.getElementById("hum-text-all").innerText = latestHum;
-  
-          tempGauge.value = latestTemp;
-          humGauge.value = latestHum;
-          tempGaugeAll.value = latestTemp;
-          humGaugeAll.value = latestHum;
-        });
-    }
-  
-    window.onload = () => {
-      chart = createChart("sensorChart");
-      chartAll = createChart("sensorChartAll");
-      tempGauge = createGauge("tempGauge", 50, "°C");
-      humGauge = createGauge("humGauge", 100, "%");
-      tempGaugeAll = createGauge("tempGaugeAll", 50, "°C");
-      humGaugeAll = createGauge("humGaugeAll", 100, "%");
-  
-      updateData();
-      setInterval(updateData, 2000);
-    };
-  </script>
-  
 </body>
 </html>

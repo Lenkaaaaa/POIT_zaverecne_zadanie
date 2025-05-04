@@ -5,7 +5,7 @@ def get_latest_data(limit=10):
         conn = mysql.connector.connect(
             host="127.0.0.1",
             user="lenka",
-            password="mojesilneheslo",  # zmeň na svoje skutočné heslo
+            password="mojesilneheslo",  
             database="poit_d1"
         )
         cursor = conn.cursor()

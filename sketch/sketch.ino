@@ -19,11 +19,11 @@ void setup() {
 
   sensor_t sensor;
   dht.temperature().getSensor(&sensor);
-  delayMS = sensor.min_delay / 1000;  // oneskorenie medzi meraniami
+  //delayMS = sensor.min_delay / 1000;  // oneskorenie medzi meraniami
 }
 
 void loop() {
-  delay(2000);
+  delay(1000);
 
   sensors_event_t tempEvent, humEvent;
 
@@ -43,7 +43,7 @@ void loop() {
     Serial.println(humEvent.relative_humidity);
   }
 
-  Serial.println("Meranie prebehlo...");
+ Serial.println("Meranie prebehlo...");
 }
 
 
