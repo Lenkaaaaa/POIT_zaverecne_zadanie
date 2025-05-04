@@ -18,6 +18,37 @@ limits = {
     "max_hum": 60
 }
 
+@socketio.on("get_current_limits")
+def get_current_limits():
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="lenka",
+            password="mojesilneheslo",
+            database="poit_d1"
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if result:
+            socketio.emit("current_limits", {
+                "min_temp": result[0],
+                "min_hum": result[1]
+            })
+        else:
+            socketio.emit("current_limits", {
+                "min_temp": 0,
+                "min_hum": 0
+            })
+    except Exception as e:
+        print("Chyba pri načítaní limitov:", e)
+        socketio.emit("current_limits", {
+            "min_temp": 0,
+            "min_hum": 0
+        })
+
 
 def get_latest_data(limit=1):
     try:

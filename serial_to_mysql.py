@@ -1,6 +1,5 @@
 import serial
 import mysql.connector
-from datetime import datetime
 import time
 
 # Nastavenia sériového portu
@@ -11,7 +10,7 @@ print("Citam data zo senzora...")
 
 # Pripojenie na sériový port
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-time.sleep(2)  #  Počkaj na Arduino reset
+time.sleep(2)  # Počkaj na Arduino reset
 
 # Pripojenie do MySQL databázy
 db = mysql.connector.connect(
@@ -24,6 +23,14 @@ cursor = db.cursor()
 
 try:
     while True:
+        # Získaj aktuálne limity z tabuľky
+        cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
+        limit_row = cursor.fetchone()
+        if limit_row:
+            min_temp_limit, min_hum_limit = limit_row
+        else:
+            min_temp_limit, min_hum_limit = 0, 0  # predvolené hodnoty
+
         raw = ser.readline()
         print(f"RAW: {raw}")
         try:
@@ -34,12 +41,16 @@ try:
                 temp_str, hum_str = line.split(",")
                 temperature = float(temp_str)
                 humidity = float(hum_str)
-                print(f"✅ Teplota: {temperature} °C | Vlhkosť: {humidity} %")
+                print(f"Teplota: {temperature} °C | Vlhkosť: {humidity} %")
 
-                # Zápis do databázy
-                query = "INSERT INTO monitorovanie (teplota, vlhkost) VALUES (%s, %s)"
-                cursor.execute(query, (temperature, humidity))
-                db.commit()
+                # Zápis len ak sú hodnoty nad minimálnymi limitmi
+                if temperature >= min_temp_limit and humidity >= min_hum_limit:
+                    query = "INSERT INTO monitorovanie (teplota, vlhkost) VALUES (%s, %s)"
+                    cursor.execute(query, (temperature, humidity))
+                    db.commit()
+                    print("Hodnoty uložené do databázy.")
+                else:
+                    print("Hodnoty pod limitom – nezapísané.")
             else:
                 print("Nesprávny formát")
 

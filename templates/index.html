@@ -22,6 +22,17 @@
     <p class="mt-2"><strong>Status:</strong> <span id="status-text">—</span></p>
   </div>
 
+  <h4 class="mb-4">Nastavenie parametrov monitorovania</h4>
+
+  <div class="mt-3">
+    <label for="min-temp" class="form-label">Min. teplota (°C):</label>
+    <input type="number" id="min-temp" class="form-control d-inline-block w-auto" value="0">
+    <label for="min-hum" class="form-label ms-3">Min. vlhkosť (%):</label>
+    <input type="number" id="min-hum" class="form-control d-inline-block w-auto" value="0">
+  </div>
+
+  <h4 class="mb-4">Max/min hodnoty monitorovania</h4>
+  
   <form class="row g-2 mb-4" onsubmit="setLimits(event)">
     <div class="col">
       <label>Min. teplota</label>
@@ -140,6 +151,16 @@
     }).draw();
 
 
+    socket.on("connect", () => {
+      socket.emit("get_current_limits");  
+    });
+
+    socket.on("current_limits", (data) => {
+      document.getElementById("min-temp").value = data.min_temp;
+      document.getElementById("min-hum").value = data.min_hum;
+    });
+
+
     socket.on("new_data", (data) => {
       const time = new Date(data.cas).toLocaleTimeString('sk-SK');
       const temp = data.teplota;
@@ -148,16 +169,20 @@
       document.getElementById("hum-text").innerText = hum;
       tempGauge.value = temp;
       humGauge.value = hum;
-
       tempGauge.update({ colorValueText: (temp < limits.min_temp || temp > limits.max_temp) ? "red" : "black" });
       humGauge.update({ colorValueText: (hum < limits.min_hum || hum > limits.max_hum) ? "red" : "black" });
-
       let tempClass = "";
       let humClass = "";
 
       // Kontrola rozsahov (musí byť rovnaké ako na serveri)
       if (temp < limits.min_temp || temp > limits.max_temp) tempClass = "table-danger";
       if (hum < limits.min_hum || hum > limits.max_hum) humClass = "table-danger";
+
+      const minTemp = parseFloat(document.getElementById("min-temp").value);
+      const minHum = parseFloat(document.getElementById("min-hum").value);
+
+      if (temp < minTemp || hum < minHum) return;  // Preskoč hodnoty pod hranicou
+
 
       const row = `<tr>
         <td>${time}</td>
