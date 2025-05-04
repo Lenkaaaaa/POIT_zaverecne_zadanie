@@ -48,12 +48,31 @@
     const table = document.getElementById("data-table");
     const statusText = document.getElementById("status-text");
 
-    // Tlačidlá
     function sendCommand(cmd) {
       socket.emit(cmd);
+
+      // Ak bol stlačený "Close", resetujeme vizualizácie
+      if (cmd === "close_system") {
+        resetDisplay();
+      }
     }
 
-    // Graf
+    function resetDisplay() {
+      // Reset textov a ciferníkov
+      document.getElementById("temp-text").innerText = "--";
+      document.getElementById("hum-text").innerText = "--";
+      tempGauge.value = 0;
+      humGauge.value = 0;
+
+      // Vymazanie tabuľky
+      table.innerHTML = "";
+
+      // Reset grafu
+      chart.data.labels = [];
+      chart.data.datasets.forEach(ds => ds.data = []);
+      chart.update();
+    }
+
     const chart = new Chart(document.getElementById("sensorChart").getContext("2d"), {
       type: "line",
       data: {
@@ -69,7 +88,6 @@
       }
     });
 
-    // Ciferníky
     const tempGauge = new RadialGauge({
       renderTo: "tempGauge",
       minValue: 0,
@@ -90,7 +108,6 @@
       animation: true
     }).draw();
 
-    // Príjem nových dát
     socket.on("new_data", (data) => {
       const time = new Date(data.cas).toLocaleTimeString('sk-SK');
       const temp = data.teplota;
@@ -101,12 +118,10 @@
       tempGauge.value = temp;
       humGauge.value = hum;
 
-      // Tabuľka
       const row = `<tr><td>${time}</td><td>${temp}</td><td>${hum}</td></tr>`;
       table.insertAdjacentHTML("afterbegin", row);
       if (table.rows.length > 10) table.deleteRow(-1);
 
-      // Graf
       chart.data.labels.push(time);
       chart.data.datasets[0].data.push(temp);
       chart.data.datasets[1].data.push(hum);
@@ -118,7 +133,6 @@
       chart.update();
     });
 
-    // Zobrazenie stavu
     socket.on("status_update", (data) => {
       statusText.textContent = data.status;
     });
