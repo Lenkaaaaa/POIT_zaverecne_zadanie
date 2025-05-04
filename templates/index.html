@@ -29,7 +29,13 @@
     <input type="number" id="min-temp" class="form-control d-inline-block w-auto" value="0">
     <label for="min-hum" class="form-label ms-3">Min. vlhkosť (%):</label>
     <input type="number" id="min-hum" class="form-control d-inline-block w-auto" value="0">
+    <button type="button" class="btn btn-outline-primary" onclick="submitMinLimits()">Zapiš parametre</button>
+    <div class="mt-3">
+      <p class="mt-2"><strong>Zápis limitov:</strong> <span id="save-status">—</span></p>
+    </div>
   </div>
+
+  
 
   <h4 class="mb-4">Max/min hodnoty monitorovania</h4>
   
@@ -214,13 +220,32 @@
       limits.min_hum = parseFloat(document.getElementById("minHum").value);
       limits.max_hum = parseFloat(document.getElementById("maxHum").value);
 
-      socket.emit("set_limits", { ...limits });
+      // Odoslanie min_temp a min_hum na server
+      socket.emit("set_limits", {
+        min_temp: limits.min_temp,
+        min_hum: limits.min_hum
+      });
     }
+
 
 
     socket.on("limit_status", data => {
       document.getElementById("limit-status").innerText = data.message;
+      document.getElementById("save-status").innerText = data.message;
     });
+
+
+
+
+    function submitMinLimits() {
+      const minTemp = parseFloat(document.getElementById("min-temp").value);
+      const minHum = parseFloat(document.getElementById("min-hum").value);
+
+      socket.emit("set_min_thresholds", {
+        min_temp: minTemp,
+        min_hum: minHum
+      });
+    }
 
   </script>
 </body>

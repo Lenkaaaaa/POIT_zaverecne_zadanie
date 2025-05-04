@@ -12,7 +12,7 @@ print("Citam data zo senzora...")
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
 time.sleep(2)  # Počkaj na Arduino reset
 
-# Pripojenie do MySQL databázy
+# Trvalé spojenie na zápis do databázy
 db = mysql.connector.connect(
     host="localhost",
     user="lenka",
@@ -23,14 +23,29 @@ cursor = db.cursor()
 
 try:
     while True:
-        # Získaj aktuálne limity z tabuľky
-        cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
-        limit_row = cursor.fetchone()
-        if limit_row:
-            min_temp_limit, min_hum_limit = limit_row
-        else:
-            min_temp_limit, min_hum_limit = 0, 0  # predvolené hodnoty
+        # 🔄 Vždy znova otvor nové spojenie na čítanie limitov
+        try:
+            limit_db = mysql.connector.connect(
+                host="localhost",
+                user="lenka",
+                password="mojesilneheslo",
+                database="poit_d1"
+            )
+            limit_cursor = limit_db.cursor()
+            limit_cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
+            limit_row = limit_cursor.fetchone()
+            limit_cursor.close()
+            limit_db.close()
 
+            if limit_row:
+                min_temp_limit, min_hum_limit = limit_row
+            else:
+                min_temp_limit, min_hum_limit = 0, 0
+        except Exception as e:
+            print("❌ Chyba pri načítaní limitov:", e)
+            min_temp_limit, min_hum_limit = 0, 0
+
+        # Čítanie zo senzora
         raw = ser.readline()
         print(f"RAW: {raw}")
         try:
@@ -43,24 +58,24 @@ try:
                 humidity = float(hum_str)
                 print(f"Teplota: {temperature} °C | Vlhkosť: {humidity} %")
 
-                # Zápis len ak sú hodnoty nad minimálnymi limitmi
+                # 💾 Zápis iba ak sú hodnoty nad minimálnymi limitmi
                 if temperature >= min_temp_limit and humidity >= min_hum_limit:
                     query = "INSERT INTO monitorovanie (teplota, vlhkost) VALUES (%s, %s)"
                     cursor.execute(query, (temperature, humidity))
                     db.commit()
-                    print("Hodnoty uložené do databázy.")
+                    print("✅ Hodnoty uložené do databázy.")
                 else:
-                    print("Hodnoty pod limitom – nezapísané.")
+                    print("⚠️ Hodnoty pod limitom – nezapísané.")
             else:
-                print("Nesprávny formát")
+                print("❌ Nesprávny formát")
 
         except Exception as e:
-            print(f"Chyba pri spracovaní: {e}")
+            print(f"❌ Chyba pri spracovaní: {e}")
 
         time.sleep(2)
 
 except KeyboardInterrupt:
-    print("Ukončené používateľom.")
+    print("🛑 Ukončené používateľom.")
     ser.close()
     cursor.close()
     db.close()

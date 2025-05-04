@@ -126,9 +126,34 @@ def set_limits(data):
         limits["max_temp"] = float(data.get("max_temp", 30))
         limits["min_hum"] = float(data.get("min_hum", 30))
         limits["max_hum"] = float(data.get("max_hum", 60))
-        print("✅ Limity nastavené:", limits)
+        print("Limity nastavené:", limits)
     except Exception as e:
-        print("❌ Chyba pri nastavovaní limitov:", e)
+        print("Chyba pri nastavovaní limitov:", e)
+
+
+
+@socketio.on("set_min_thresholds")
+def set_min_thresholds(data):
+    try:
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="lenka",
+            password="mojesilneheslo",
+            database="poit_d1"
+        )
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE limity 
+            SET min_teplota = %s, min_vlhkost = %s
+            WHERE id = 1
+        """, (data["min_temp"], data["min_hum"]))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        emit("limit_status", {"message": "Minimálne limity uložené do databázy"})
+    except Exception as e:
+        emit("limit_status", {"message": "Chyba pri ukladaní min. limitov"})
+        print(f"Chyba pri ukladaní min. limitov: {e}")
 
 
 if __name__ == "__main__":
