@@ -31,10 +31,10 @@ void loop() {
   dht.humidity().getEvent(&humEvent);
 
   if (isnan(tempEvent.temperature)) {
-    Serial.println("❌ Nepodarilo sa získať teplotu");
+    Serial.println("Nepodarilo sa získať teplotu");
   }
   if (isnan(humEvent.relative_humidity)) {
-    Serial.println("❌ Nepodarilo sa získať vlhkosť");
+    Serial.println("Nepodarilo sa získať vlhkosť");
   }
 
   if (!isnan(tempEvent.temperature) && !isnan(humEvent.relative_humidity)) {
@@ -43,7 +43,7 @@ void loop() {
     Serial.println(humEvent.relative_humidity);
   }
 
- Serial.println("Meranie prebehlo...");
+ //Serial.println("Meranie prebehlo...");
 }
 
 
