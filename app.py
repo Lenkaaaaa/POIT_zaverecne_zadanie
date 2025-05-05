@@ -113,11 +113,18 @@ def open_system():
             database="poit_d1"
         )
         cursor = conn.cursor()
+
+        # Vymaž staré dáta monitorovania
+        cursor.execute("DELETE FROM monitorovanie")
+
+        # Inicializuj systém
         cursor.execute("UPDATE stav_systemu SET aktivny = TRUE, monitoring = FALSE WHERE id = 1")
         conn.commit()
+
         cursor.close()
         conn.close()
         print("✅ Systém bol inicializovaný (aktivny = TRUE, monitoring = FALSE)")
+        print("🧹 Dáta z predchádzajúceho monitorovania vymazané.")
     except Exception as e:
         print("❌ Chyba pri inicializácii systému:", e)
 
@@ -128,6 +135,7 @@ def open_system():
 def start_monitoring():
     global monitoring_active
     monitoring_active = True
+
     try:
         conn = mysql.connector.connect(
             host="localhost",
@@ -136,13 +144,15 @@ def start_monitoring():
             database="poit_d1"
         )
         cursor = conn.cursor()
+
+        # Aktivuj monitoring
         cursor.execute("UPDATE stav_systemu SET monitoring = TRUE WHERE id = 1")
         conn.commit()
         cursor.close()
         conn.close()
-        print("▶️ Monitoring bol spustený (stav uložený do DB)")
+        print("▶️ Monitoring bol spustený (stav a dáta v DB aktualizované)")
     except Exception as e:
-        print("❌ Chyba pri zápise do stav_systemu:", e)
+        print("❌ Chyba pri štarte monitoringu:", e)
 
     emit("status_update", {"status": "▶️ Monitoring spustený"}, broadcast=True)
 
