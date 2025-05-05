@@ -1,4 +1,4 @@
-import serial
+import serial 
 import mysql.connector
 import time
 
@@ -23,9 +23,17 @@ try:
         )
         cursor = db.cursor()
 
-        # Zisti, či je monitoring aktívny
-        cursor.execute("SELECT monitoring FROM stav_systemu WHERE id = 1")
-        monitoring_enabled = cursor.fetchone()[0]
+        # Zisti, či je systém aktívny a monitoring zapnutý
+        cursor.execute("SELECT aktivny, monitoring FROM stav_systemu WHERE id = 1")
+        result = cursor.fetchone()
+        aktivny, monitoring_enabled = result if result else (False, False)
+
+        if not aktivny:
+            print("🔌 Systém nie je aktívny – dáta sa neukladajú.")
+            cursor.close()
+            db.close()
+            time.sleep(2)
+            continue
 
         if not monitoring_enabled:
             print("⏸️ Monitoring je pozastavený – dáta sa neukladajú.")
