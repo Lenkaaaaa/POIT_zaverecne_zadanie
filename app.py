@@ -1,9 +1,10 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import Flask, render_template
+from flask import Flask, render_template, send_file
 from flask_socketio import SocketIO, emit
 import mysql.connector
+import csv, zipfile, io
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'tajnykluc'
@@ -226,6 +227,59 @@ def set_min_thresholds(data):
     except Exception as e:
         emit("limit_status", {"message": "Chyba pri ukladaní min. limitov"})
         print(f"Chyba pri ukladaní min. limitov: {e}")
+
+@app.route("/export-data")
+def export_data():
+    try:
+        # Pripojenie k DB
+        conn = mysql.connector.connect(
+            host="localhost",
+            user="lenka",
+            password="mojesilneheslo",
+            database="poit_d1"
+        )
+        cursor = conn.cursor()
+
+        # Získaj dáta z monitorovanie
+        cursor.execute("SELECT teplota, vlhkost, cas FROM monitorovanie")
+        monitor_data = cursor.fetchall()
+
+        # Získaj dáta z limity
+        cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
+        limit_data = cursor.fetchone()
+
+        # Zavri pripojenie
+        cursor.close()
+        conn.close()
+
+        # CSV súbory do pamäte
+        memory_file = io.BytesIO()
+        with zipfile.ZipFile(memory_file, 'w') as zf:
+            # Monitorovanie
+            monitor_csv = io.StringIO()
+            writer = csv.writer(monitor_csv)
+            writer.writerow(["Teplota", "Vlhkost", "Cas"])
+            writer.writerows(monitor_data)
+            zf.writestr("monitorovanie.csv", monitor_csv.getvalue())
+
+            # Limity
+            if limit_data:
+                limit_csv = io.StringIO()
+                writer = csv.writer(limit_csv)
+                writer.writerow(["Min_teplota", "Min_vlhkost"])
+                writer.writerow(limit_data)
+                zf.writestr("limity.csv", limit_csv.getvalue())
+
+        memory_file.seek(0)
+        return send_file(
+            memory_file,
+            mimetype="application/zip",
+            as_attachment=True,
+            download_name="export_senzorovych_dat.zip"
+        )
+    except Exception as e:
+        print("❌ Chyba pri exporte:", e)
+        return "Chyba pri exporte", 500
 
 
 if __name__ == "__main__":

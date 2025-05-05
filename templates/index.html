@@ -76,14 +76,21 @@
   </div>
 
   <!-- Tabuľka -->
+  <h4 class="mt-5">Export dát</h4>
+  <a href="/export-data" class="btn btn-outline-success mb-4" download>
+    Stiahnuť ZIP s CSV dátami
+  </a>
+  
   <h4>Tabuľka posledných hodnôt</h4>
   <table class="table table-bordered">
     <thead><tr><th>Čas</th><th>Teplota (°C)</th><th>Vlhkosť (%)</th></tr></thead>
     <tbody id="data-table"></tbody>
   </table>
+  
 
   <!-- Graf -->
   <h4 class="mt-5">Graf</h4>
+  <button class="btn btn-outline-primary mt-3" onclick="exportChart()">Stiahnuť graf ako obrázok</button>
   <canvas id="sensorChart" height="100"></canvas>
 
   <script>
@@ -245,6 +252,14 @@
         min_temp: minTemp,
         min_hum: minHum
       });
+    }
+
+    function exportChart() {
+      const canvas = document.getElementById("sensorChart");
+      const link = document.createElement("a");
+      link.download = "graf_senzorov.png";
+      link.href = canvas.toDataURL("image/png", 1.0);
+      link.click();
     }
 
   </script>
