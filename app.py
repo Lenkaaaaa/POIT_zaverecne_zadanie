@@ -30,7 +30,12 @@ def get_current_limits():
             database="poit_d1"
         )
         cursor = conn.cursor()
-        cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
+        cursor.execute("""
+            SELECT min_teplota, min_vlhkost
+            FROM limity
+            ORDER BY cas DESC
+            LIMIT 1
+        """)
         result = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -45,11 +50,12 @@ def get_current_limits():
                 "min_hum": 0
             })
     except Exception as e:
-        print("Chyba pri načítaní limitov:", e)
+        print("❌ Chyba pri načítaní aktuálnych limitov:", e)
         socketio.emit("current_limits", {
             "min_temp": 0,
             "min_hum": 0
         })
+
 
 
 def get_latest_data(limit=1):
@@ -114,8 +120,10 @@ def open_system():
         )
         cursor = conn.cursor()
 
-        # Vymaž staré dáta monitorovania
+        # Vymaž staré dáta monitorovania aj limitov
         cursor.execute("DELETE FROM monitorovanie")
+        cursor.execute("DELETE FROM limity")
+
 
         # Inicializuj systém
         cursor.execute("UPDATE stav_systemu SET aktivny = TRUE, monitoring = FALSE WHERE id = 1")
@@ -226,22 +234,20 @@ def set_min_thresholds(data):
         )
         cursor = conn.cursor()
         cursor.execute("""
-            UPDATE limity 
-            SET min_teplota = %s, min_vlhkost = %s
-            WHERE id = 1
+            INSERT INTO limity (min_teplota, min_vlhkost)
+            VALUES (%s, %s)
         """, (data["min_temp"], data["min_hum"]))
         conn.commit()
         cursor.close()
         conn.close()
-        emit("limit_status", {"message": "Minimálne limity uložené do databázy"})
+        emit("limit_status", {"message": "✅ Minimálne limity boli zaznamenané do databázy."})
     except Exception as e:
-        emit("limit_status", {"message": "Chyba pri ukladaní min. limitov"})
-        print(f"Chyba pri ukladaní min. limitov: {e}")
+        emit("limit_status", {"message": "❌ Chyba pri ukladaní min. limitov."})
+        print(f"❌ Chyba pri INSERT do limity: {e}")
 
 @app.route("/export-data")
 def export_data():
     try:
-        # Pripojenie k DB
         conn = mysql.connector.connect(
             host="localhost",
             user="lenka",
@@ -250,35 +256,32 @@ def export_data():
         )
         cursor = conn.cursor()
 
-        # Získaj dáta z monitorovanie
+        # 1. Dáta z monitorovanie
         cursor.execute("SELECT teplota, vlhkost, cas FROM monitorovanie")
         monitor_data = cursor.fetchall()
 
-        # Získaj dáta z limity
-        cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
-        limit_data = cursor.fetchone()
+        # 2. Všetky záznamy z limity vrátane timestampu
+        cursor.execute("SELECT min_teplota, min_vlhkost, cas FROM limity")
+        limit_data = cursor.fetchall()
 
-        # Zavri pripojenie
         cursor.close()
         conn.close()
 
-        # CSV súbory do pamäte
         memory_file = io.BytesIO()
         with zipfile.ZipFile(memory_file, 'w') as zf:
-            # Monitorovanie
+            # monitorovanie.csv
             monitor_csv = io.StringIO()
             writer = csv.writer(monitor_csv)
             writer.writerow(["Teplota", "Vlhkost", "Cas"])
             writer.writerows(monitor_data)
             zf.writestr("monitorovanie.csv", monitor_csv.getvalue())
 
-            # Limity
-            if limit_data:
-                limit_csv = io.StringIO()
-                writer = csv.writer(limit_csv)
-                writer.writerow(["Min_teplota", "Min_vlhkost"])
-                writer.writerow(limit_data)
-                zf.writestr("limity.csv", limit_csv.getvalue())
+            # limity.csv
+            limity_csv = io.StringIO()
+            writer = csv.writer(limity_csv)
+            writer.writerow(["Min_teplota", "Min_vlhkost", "Cas"])
+            writer.writerows(limit_data)
+            zf.writestr("limity.csv", limity_csv.getvalue())
 
         memory_file.seek(0)
         return send_file(
@@ -287,9 +290,11 @@ def export_data():
             as_attachment=True,
             download_name="export_senzorovych_dat.zip"
         )
+
     except Exception as e:
         print("❌ Chyba pri exporte:", e)
         return "Chyba pri exporte", 500
+
 
 
 if __name__ == "__main__":

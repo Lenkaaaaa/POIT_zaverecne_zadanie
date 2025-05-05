@@ -43,7 +43,13 @@ try:
             continue
 
         # Získaj aktuálne limity z tabuľky
-        cursor.execute("SELECT min_teplota, min_vlhkost FROM limity WHERE id = 1")
+        cursor.execute("""
+            SELECT min_teplota, min_vlhkost
+            FROM limity
+            ORDER BY cas DESC
+            LIMIT 1
+        """)
+
         limit_row = cursor.fetchone()
         min_temp_limit, min_hum_limit = limit_row if limit_row else (0, 0)
 
