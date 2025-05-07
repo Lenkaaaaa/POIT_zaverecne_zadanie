@@ -7,13 +7,14 @@
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-gauges/gauge.min.js"></script>
+  <link rel="stylesheet" href="../static/style.css">
 </head>
 <body class="container py-4">
-  <h1 class="mb-4">Monitorovanie teploty a vlhkosti</h1>
+  <h1 class="mb-4 text-center">Monitorovanie teploty a vlhkosti</h1>
 
   <!-- Ovládacie tlačidlá -->
   <div class="mb-4">
-    <div class="btn-group me-3" role="group">
+    <div class="btn-group me-3" role="group">   
       <button class="btn btn-secondary" onclick="sendCommand('open_system')">Open</button>
       <button class="btn btn-success" onclick="sendCommand('start_monitoring')">Start</button>
       <button class="btn btn-warning" onclick="sendCommand('stop_monitoring')">Stop</button>
@@ -34,7 +35,6 @@
       <p class="mt-2"><strong>Zápis limitov:</strong> <span id="save-status">—</span></p>
     </div>
   </div>
-
   
 
   <h4 class="mb-4">Max/min hodnoty monitorovania</h4>
@@ -62,18 +62,22 @@
   </form>
   <p><strong>Stav rozsahov:</strong> <span id="limit-status">—</span></p>
   
-
   <!-- Ciferníky -->
   <div class="row text-center mb-4">
     <div class="col-md-6">
-      <p><strong>Teplota:</strong> <span id="temp-text">--</span> °C</p>
-      <canvas id="tempGauge" width="250" height="250"></canvas>
+      <div class="gauge-label"><strong>Teplota:</strong> <span id="temp-text">--</span> °C</div>
+      <div class="gauge-wrapper">
+        <canvas id="tempGauge"></canvas>
+      </div>
     </div>
     <div class="col-md-6">
-      <p><strong>Vlhkosť:</strong> <span id="hum-text">--</span> %</p>
-      <canvas id="humGauge" width="250" height="250"></canvas>
+      <div class="gauge-label"><strong>Vlhkosť:</strong> <span id="hum-text">--</span> %</div>
+      <div class="gauge-wrapper">
+        <canvas id="humGauge"></canvas>
+      </div>
     </div>
   </div>
+  
 
   <!-- Tabuľka -->
   <h4 class="mt-5">Export dát</h4>
@@ -93,8 +97,7 @@
       </thead>
       <tbody id="data-table"></tbody>
     </table>
-  </div>
-  
+  </div>  
   
 
   <!-- Graf -->
@@ -102,175 +105,7 @@
   <button class="btn btn-outline-primary mt-3" onclick="exportChart()">Stiahnuť graf ako obrázok</button>
   <canvas id="sensorChart" height="100"></canvas>
 
-  <script>
-    let limits = {
-      min_temp: 18,
-      max_temp: 30,
-      min_hum: 30,
-      max_hum: 60
-    };
+  <script src="../static/main.js"></script>
 
-    const socket = io();
-    const table = document.getElementById("data-table");
-    const statusText = document.getElementById("status-text");
-
-    function sendCommand(cmd) {
-      socket.emit(cmd);
-      if (cmd === "close_system") resetDisplay();
-    }
-
-    function resetDisplay() {
-      document.getElementById("temp-text").innerText = "--";
-      document.getElementById("hum-text").innerText = "--";
-      tempGauge.value = 0;
-      humGauge.value = 0;
-      table.innerHTML = "";
-      chart.data.labels = [];
-      chart.data.datasets.forEach(ds => ds.data = []);
-      chart.update();
-    }
-
-    const chart = new Chart(document.getElementById("sensorChart").getContext("2d"), {
-      type: "line",
-      data: {
-        labels: [],
-        datasets: [
-          { label: "Teplota (°C)", data: [], borderColor: "red", fill: false },
-          { label: "Vlhkosť (%)", data: [], borderColor: "blue", fill: false }
-        ]
-      },
-      options: { responsive: true, scales: { y: { beginAtZero: true } } }
-    });
-
-
-    const tempGauge = new RadialGauge({
-      renderTo: "tempGauge",
-      minValue: 0,
-      maxValue: 50,
-      units: "°C",
-      value: 0,
-      majorTicks: ["0","10","20","30","40","50"],
-      animation: true,
-      valueInt: 2,
-      valueDec: 1,
-      valueTextShadow: false,
-      colorValueText: "#000"
-    }).draw();
-
-
-    const humGauge = new RadialGauge({
-      renderTo: "humGauge",
-      minValue: 0,
-      maxValue: 100,
-      units: "%",
-      value: 0,
-      majorTicks: ["0","20","40","60","80","100"],
-      animation: true,
-      valueInt: 2,
-      valueDec: 1,
-      valueTextShadow: false,
-      colorValueText: "#000"
-    }).draw();
-
-
-    socket.on("connect", () => {
-      socket.emit("get_current_limits");  
-    });
-
-    socket.on("current_limits", (data) => {
-      document.getElementById("min-temp").value = data.min_temp;
-      document.getElementById("min-hum").value = data.min_hum;
-    });
-
-
-    socket.on("new_data", (data) => {
-      const time = new Date(data.cas).toLocaleTimeString('sk-SK');
-      const temp = data.teplota;
-      const hum = data.vlhkost;
-      document.getElementById("temp-text").innerText = temp;
-      document.getElementById("hum-text").innerText = hum;
-      tempGauge.value = temp;
-      humGauge.value = hum;
-      tempGauge.update({ colorValueText: (temp < limits.min_temp || temp > limits.max_temp) ? "red" : "black" });
-      humGauge.update({ colorValueText: (hum < limits.min_hum || hum > limits.max_hum) ? "red" : "black" });
-      let tempClass = "";
-      let humClass = "";
-
-      // Kontrola rozsahov (musí byť rovnaké ako na serveri)
-      if (temp < limits.min_temp || temp > limits.max_temp) tempClass = "table-danger";
-      if (hum < limits.min_hum || hum > limits.max_hum) humClass = "table-danger";
-
-      const minTemp = parseFloat(document.getElementById("min-temp").value);
-      const minHum = parseFloat(document.getElementById("min-hum").value);
-
-      if (temp < minTemp || hum < minHum) return;  // Preskoč hodnoty pod hranicou
-
-
-      const row = `<tr>
-        <td>${time}</td>
-        <td class="${tempClass}">${temp}</td>
-        <td class="${humClass}">${hum}</td>
-      </tr>`;
-
-      table.insertAdjacentHTML("afterbegin", row);
-      if (table.rows.length > 10) table.deleteRow(-1);
-      chart.data.labels.push(time);
-      chart.data.datasets[0].data.push(temp);
-      chart.data.datasets[1].data.push(hum);
-      if (chart.data.labels.length > 20) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-        chart.data.datasets[1].data.shift();
-      }
-      chart.update();
-    });
-
-    socket.on("status_update", (data) => {
-      statusText.textContent = data.status;
-    });
-
-    function setLimits(e) {
-      e.preventDefault();
-      limits.min_temp = parseFloat(document.getElementById("minTemp").value);
-      limits.max_temp = parseFloat(document.getElementById("maxTemp").value);
-      limits.min_hum = parseFloat(document.getElementById("minHum").value);
-      limits.max_hum = parseFloat(document.getElementById("maxHum").value);
-
-      // Odoslanie min_temp a min_hum na server
-      socket.emit("set_limits", {
-        min_temp: limits.min_temp,
-        min_hum: limits.min_hum
-      });
-    }
-
-
-
-    socket.on("limit_status", data => {
-      document.getElementById("limit-status").innerText = data.message;
-      document.getElementById("save-status").innerText = data.message;
-    });
-
-
-
-
-    function submitMinLimits() {
-      const minTemp = parseFloat(document.getElementById("min-temp").value);
-      const minHum = parseFloat(document.getElementById("min-hum").value);
-
-      socket.emit("set_min_thresholds", {
-        min_temp: minTemp,
-        min_hum: minHum
-      });
-    }
-
-    function exportChart() {
-      const canvas = document.getElementById("sensorChart");
-      const link = document.createElement("a");
-      link.download = "graf_senzorov.png";
-      link.href = canvas.toDataURL("image/png", 1.0);
-      link.click();
-    }
-
-  </script>
 </body>
 </html>

@@ -52,7 +52,7 @@ def get_current_limits():
                 "min_hum": 0
             })
     except Exception as e:
-        print("❌ Chyba pri načítaní aktuálnych limitov:", e)
+        print("Chyba pri načítaní aktuálnych limitov:", e)
         socketio.emit("current_limits", {
             "min_temp": 0,
             "min_hum": 0
@@ -75,7 +75,7 @@ def get_latest_data(limit=1):
         conn.close()
         return data
     except Exception as e:
-        print("❌ Chyba DB:", e)
+        print("Chyba DB:", e)
         return []
 
 
@@ -91,7 +91,6 @@ def background_thread():
                     "cas": str(cas)
                 })
 
-                # Kontrola limitov pre vizualizáciu
                 if teplota < limits["min_temp"] or teplota > limits["max_temp"] or \
                    vlhkost < limits["min_hum"] or vlhkost > limits["max_hum"]:
                     socketio.emit("limit_status", {"message": "⚠️ Mimo rozsahu"})
@@ -108,11 +107,10 @@ def index():
 @socketio.on("connect")
 def on_connect():
     global background_thread_started
-    print("✅ Klient pripojený")
+    print("Klient pripojený")
     if not background_thread_started:
         socketio.start_background_task(background_thread)
         background_thread_started = True
-
 
 
 @socketio.on("open_system")
@@ -126,19 +124,16 @@ def open_system():
         )
         cursor = conn.cursor()
 
-        # Vymaž staré dáta monitorovania aj limitov
         cursor.execute("DELETE FROM monitorovanie")
         cursor.execute("DELETE FROM limity")
 
-
-        # Inicializuj systém
         cursor.execute("UPDATE stav_systemu SET aktivny = TRUE, monitoring = FALSE WHERE id = 1")
         conn.commit()
 
         cursor.close()
         conn.close()
-        print("✅ Systém bol inicializovaný (aktivny = TRUE, monitoring = FALSE)")
-        print("🧹 Dáta z predchádzajúceho monitorovania vymazané.")
+        print("✅ Systém bol inicializovaný")
+        print("Dáta z predchádzajúceho monitorovania vymazané.")
     except Exception as e:
         print("❌ Chyba pri inicializácii systému:", e)
 
@@ -159,7 +154,6 @@ def start_monitoring():
         )
         cursor = conn.cursor()
 
-        # Aktivuj monitoring
         cursor.execute("UPDATE stav_systemu SET monitoring = TRUE WHERE id = 1")
         conn.commit()
         cursor.close()
@@ -262,11 +256,9 @@ def export_data():
         )
         cursor = conn.cursor()
 
-        # 1. Dáta z monitorovanie
         cursor.execute("SELECT teplota, vlhkost, cas FROM monitorovanie")
         monitor_data = cursor.fetchall()
 
-        # 2. Všetky záznamy z limity vrátane timestampu
         cursor.execute("SELECT min_teplota, min_vlhkost, cas FROM limity")
         limit_data = cursor.fetchall()
 
@@ -275,14 +267,13 @@ def export_data():
 
         memory_file = io.BytesIO()
         with zipfile.ZipFile(memory_file, 'w') as zf:
-            # monitorovanie.csv
+        
             monitor_csv = io.StringIO()
             writer = csv.writer(monitor_csv)
             writer.writerow(["Teplota", "Vlhkost", "Cas"])
             writer.writerows(monitor_data)
             zf.writestr("monitorovanie.csv", monitor_csv.getvalue())
 
-            # limity.csv
             limity_csv = io.StringIO()
             writer = csv.writer(limity_csv)
             writer.writerow(["Min_teplota", "Min_vlhkost", "Cas"])

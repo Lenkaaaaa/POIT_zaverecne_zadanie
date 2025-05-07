@@ -1,0 +1,23 @@
+h1, .btn-group {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .gauge-wrapper {
+    width: 250px;
+    height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+  }
+  
+  .gauge-label {
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+    text-align: center;
+  }
+  

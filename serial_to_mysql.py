@@ -6,7 +6,7 @@ import time
 SERIAL_PORT = "COM3"
 BAUD_RATE = 9600
 
-print("📡 Čítam dáta zo senzora...")
+print("Čítam dáta zo senzora...")
 
 # Pripojenie na sériový port
 ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
@@ -23,7 +23,6 @@ try:
         )
         cursor = db.cursor()
 
-        # Zisti, či je systém aktívny a monitoring zapnutý
         cursor.execute("SELECT aktivny, monitoring FROM stav_systemu WHERE id = 1")
         result = cursor.fetchone()
         aktivny, monitoring_enabled = result if result else (False, False)
@@ -42,7 +41,6 @@ try:
             time.sleep(2)
             continue
 
-        # Získaj aktuálne limity z tabuľky
         cursor.execute("""
             SELECT min_teplota, min_vlhkost
             FROM limity
