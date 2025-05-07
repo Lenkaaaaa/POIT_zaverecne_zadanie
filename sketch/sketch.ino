@@ -3,47 +3,39 @@
 #include <DHT_U.h>
 
 #define DHTPIN 5        // D1 = GPIO 5
-#define DHTTYPE DHT11   // Používame DHT11
+#define DHTTYPE DHT11   // DHT11 senzor
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
-uint32_t delayMS;
+
+float lastTemp = -1000;
+float lastHum = -1000;
 
 void setup() {
   Serial.begin(9600);
-//  while (!Serial) ;  // počkaj na pripojenie
-  Serial.println("Sketch sa spustil!");
   dht.begin();
-
-  Serial.println("Inicializácia senzora...");
-
-
-  sensor_t sensor;
-  dht.temperature().getSensor(&sensor);
-  //delayMS = sensor.min_delay / 1000;  // oneskorenie medzi meraniami
+  delay(2000); // Počkaj na stabilizáciu senzora
+  Serial.println("Senzor pripravený.");
 }
 
 void loop() {
-  delay(1000);
-
   sensors_event_t tempEvent, humEvent;
-
   dht.temperature().getEvent(&tempEvent);
   dht.humidity().getEvent(&humEvent);
 
-  if (isnan(tempEvent.temperature)) {
-    Serial.println("Nepodarilo sa získať teplotu");
-  }
-  if (isnan(humEvent.relative_humidity)) {
-    Serial.println("Nepodarilo sa získať vlhkosť");
-  }
-
   if (!isnan(tempEvent.temperature) && !isnan(humEvent.relative_humidity)) {
-    Serial.print(tempEvent.temperature);
-    Serial.print(",");
-    Serial.println(humEvent.relative_humidity);
+    float currentTemp = tempEvent.temperature;
+    float currentHum = humEvent.relative_humidity;
+
+    // Posielaj len ak sa hodnoty zmenili
+    if (currentTemp != lastTemp || currentHum != lastHum) {
+      Serial.print(currentTemp);
+      Serial.print(",");
+      Serial.println(currentHum);
+
+      lastTemp = currentTemp;
+      lastHum = currentHum;
+    }
   }
 
- //Serial.println("Meranie prebehlo...");
+  delay(2000);  // meraj každé 2 sekundy (DHT11 potrebuje čas)
 }
-
-

@@ -11,6 +11,8 @@ app.config['SECRET_KEY'] = 'tajnykluc'
 socketio = SocketIO(app, async_mode="eventlet")
 
 monitoring_active = False
+background_thread_started = False  
+
 
 limits = {
     "min_temp": 18,
@@ -105,8 +107,12 @@ def index():
 
 @socketio.on("connect")
 def on_connect():
+    global background_thread_started
     print("✅ Klient pripojený")
-    socketio.start_background_task(background_thread)
+    if not background_thread_started:
+        socketio.start_background_task(background_thread)
+        background_thread_started = True
+
 
 
 @socketio.on("open_system")
